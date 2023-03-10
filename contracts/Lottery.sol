@@ -1,64 +1,73 @@
 pragma solidity ^0.8.0;
 
 contract Lottery {
-    address public manager;
-    mapping(address => uint) public investments;
-    address payable[] public players;
 
-    event NewPlayer(address player);
+    enum State { Active, Close }
+
+
+    address public manager;
+
+    mapping (address => uint) players_amount;
+    address[] public players;
+
+    address payable private winner;
+    State public state;
+
+    uint public currentTime = block.timestamp;
+
+    event LotteryEnter(address player, uint amount);
     event Winner(address winner, uint amount);
     uint public totalAmount = 0;
 
     constructor() {
         manager = msg.sender;
+        state = State.Active;
     }
 
     function enter() public payable {
         require(msg.value > 0.0001 ether);
+
+        bool credited = false;
+        for(uint i = 0; i < players.length; i ++){
+            if(players[i] == msg.sender){
+                players_amount[msg.sender] += msg.value;
+            }
+        }
+
+        if(!credited){
+            players_amount[msg.sender] = msg.value;
+            players.push(payable(msg.sender));
+        }
+
         totalAmount += msg.value;
-        players.push(payable(msg.sender));
-        investments[msg.sender] += msg.value;
-        emit NewPlayer(msg.sender);
+        emit LotteryEnter(msg.sender, msg.value);
     }
 
     function pickWinner() public restricted {
         require(players.length > 0);
-        uint index = generateRandomIndex();
-        address payable winner = players[index];
-        uint amount = totalAmount;
+
+        uint winAmountIndex = uint(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, totalAmount)));
+        uint amountIndex = 0;
+
+        for(uint i = 0; i < players.length; i ++){
+            address currentPlayer = players[i];
+            if(winAmountIndex > amountIndex && winAmountIndex <= amountIndex + players_amount[currentPlayer]){
+                winner = payable(currentPlayer);
+            }
+            amountIndex += players_amount[currentPlayer];
+        }
+        
+        uint amount = address(this).balance;
         winner.transfer(amount);
-        totalAmount = 0;
-        reset();
+
+        for (uint i = 0; i < players.length; i++) {
+            players_amount[players[i]] = 0;
+        }
+        players = new address[](0);
         emit Winner(winner, amount);
     }
 
-    function generateRandomIndex() private view returns (uint) {
-        uint totalInvestments = 0;
-        for (uint256 i = 0; i < players.length; i++) {
-            totalInvestments += investments[players[i]];
-        }
-        uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, totalInvestments)));
-        uint256 index = 0;
-        uint256 previousPercentage = 0;
-        for (uint256 i = 0; i < players.length; i++) {
-            uint256 playerPercentage = investments[players[i]] * 100 / totalInvestments;
-            if (randomNumber >= previousPercentage && randomNumber < (previousPercentage + playerPercentage)) {
-                index = i;
-                break;
-            }
-            previousPercentage += playerPercentage;
-        }
-        return index;
-    }
-
-    function reset() private {
-        for (uint256 i = 0; i < players.length; i++) {
-            investments[players[i]] = 0;
-        }
-        players = new address payable[](0);
-    }
-
-    function getPlayers() public view returns (address payable[] memory) {
+    function getPlayers() public view returns (address[] memory) {
         return players;
     }
 
