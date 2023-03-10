@@ -5,8 +5,10 @@ contract Lottery {
     address public manager;
     address payable[] public players;
 
+
     event NewPlayer(address player);
     event Winner(address winner, uint amount);
+    uint totalAmount = 0;
 
     constructor() {
         manager = msg.sender;
@@ -14,6 +16,7 @@ contract Lottery {
 
     function enter() public payable {
         require(msg.value > 0.0001 ether);
+        totalAmount += msg.value;
         players.push(payable(msg.sender));
         emit NewPlayer(msg.sender);
     }
@@ -30,6 +33,10 @@ contract Lottery {
 
     function getPlayers() public view returns (address payable[] memory) {
         return players;
+    }
+
+    function getTotalAmount() public view returns (uint){
+        return totalAmount;
     }
 
     function random() private view returns (uint) {
