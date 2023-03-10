@@ -4,12 +4,20 @@ contract Lottery {
 
     enum State { Active, Close }
 
+    struct Player {
+        address player_address;
+        uint amount_bet;
+    }
+
+    uint lotteryNumber = 1;
     uint randNonce = 0;
 
-    address public manager;
+    address public owner;
 
-    mapping (address => uint) players_amount;
-    address[] public players;
+    //Players data by lottery number
+    mapping(uint => mapping(address => Player)) private players_data;
+    //Players by lottery number
+    mapping(uint => address[]) public players;
 
     address payable private winner;
     State private state;
@@ -21,7 +29,7 @@ contract Lottery {
     uint private totalAmount = 0;
 
     constructor() {
-        manager = msg.sender;
+        owner = msg.sender;
         state = State.Active;
     }
 
@@ -31,15 +39,17 @@ contract Lottery {
         require(msg.value > 0.0001 ether);
 
         bool credited = false;
-        for(uint i = 0; i < players.length; i ++){
-            if (players[i] == msg.sender){
-                players_amount[msg.sender] += msg.value;
+        for(uint i = 0; i < players[lotteryNumber].length; i ++){
+            if (players[lotteryNumber][i] == msg.sender){
+                players_data[lotteryNumber][msg.sender].amount_bet += msg.value;
+                players_data[lotteryNumber][msg.sender].player_address = msg.sender;
             }
         }
 
         if(!credited){
-            players_amount[msg.sender] = msg.value;
-         players.push(payable(msg.sender));
+            players_data[lotteryNumber][msg.sender].amount_bet = msg.value;
+            players_data[lotteryNumber][msg.sender].player_address = msg.sender;
+            players[lotteryNumber].push(payable(msg.sender));
         }
 
         totalAmount += msg.value;
@@ -48,26 +58,24 @@ contract Lottery {
 
     //Choose a winner by choosing a random ticket, consedering the value of each ticket
     function pickWinner() public restricted {
-        require (players.length > 0);
+        require (players[lotteryNumber].length > 0);
 
         uint winAmountIndex = randMod(totalAmount);
         uint amountIndex = 0;
 
-        for(uint i = 0; i < players.length; i ++){
-            address currentPlayer = players[i];
-            if(winAmountIndex > amountIndex && winAmountIndex <= amountIndex + players_amount[currentPlayer]){
+        for(uint i = 0; i < players[lotteryNumber].length; i ++){
+            address currentPlayer = players[lotteryNumber][i];
+            if(winAmountIndex > amountIndex && winAmountIndex <= amountIndex + players_data[lotteryNumber][currentPlayer].amount_bet){
                 winner = payable(currentPlayer);
             }
-            amountIndex += players_amount[currentPlayer];
+            amountIndex += players_data[lotteryNumber][currentPlayer].amount_bet;
         }
         
         uint amount = address(this).balance;
         winner.transfer(amount);
 
-        for (uint i = 0; i < players.length; i++) {
-            players_amount[players[i]] = 0;
-        }
-     players = new address[](0);
+        lotteryNumber++;
+        totalAmount = 0;
         emit Winner(winner, amount);
     }
 
@@ -86,12 +94,26 @@ contract Lottery {
         return currentTime;
     }
 
-    //Return every ticket buyed
-    function getPlayers() public view returns (address[] memory) {
-        return players;
+    //Return players of a lottery round
+    function getLotteryPlayers(uint lottery_round) public view returns (Player[] memory) {
+        uint playerCount = players[lottery_round].length;
+        Player[] memory list = new Player[](playerCount);
+
+        for (uint i = 0; i < playerCount; i++) {
+            address currentPlayer = players[lottery_round][i];
+            Player storage p = players_data[lottery_round][currentPlayer];
+            list[i] = p;
+        }
+        
+        return list;
     }
 
-    //To define
+    //Return current lottery players
+    function getCurrentLotteryPlayers() public view returns (Player[] memory) {
+        return getLotteryPlayers(lotteryNumber);
+    }
+
+    //Generate a random number with modulo
     function randMod(uint _modulus)private returns(uint)
     {
         randNonce++;
@@ -100,7 +122,7 @@ contract Lottery {
 
     //Control access in a require function
     modifier restricted() {
-        require(msg.sender == manager);
+        require(msg.sender == owner);
         _;
     }
 }
