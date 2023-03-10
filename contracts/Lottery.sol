@@ -1,40 +1,43 @@
-pragma solidity ^0.8.3;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
 contract Lottery {
+    address public manager;
+    address payable[] public players;
 
-    struct Ticket {
-        address buyer;
-        uint value;
-    }
-
-    address payable owner;
-    uint public montantTotal;
-    Ticket[] public tickets;
+    event NewPlayer(address player);
+    event Winner(address winner, uint amount);
 
     constructor() {
-        owner = payable(msg.sender);
-        montantTotal = 0;
+        manager = msg.sender;
     }
 
-    function buyTicket(uint montant) public payable {
-        require(montant > 0, "Le montant ajoute doit etre superieur a zero");
-
-        Ticket memory newTicket = Ticket({
-            buyer: msg.sender,
-            value: montant
-        });
-
-        tickets.push(newTicket);
-
-        montantTotal += montant;
+    function enter() public payable {
+        require(msg.value > 0.0001 ether);
+        players.push(payable(msg.sender));
+        emit NewPlayer(msg.sender);
     }
 
-    function winTicket(uint montant) public payable {
-        require(msg.sender == owner, "Seul le proprietaire peut retirer des fonds");
-        require(montant <= montantTotal, "Le montant demande est superieur au montant total de la cagnotte");
+    function pickWinner() public restricted {
+        require(players.length > 0);
+        uint index = random() % players.length;
+        address payable winner = players[index];
+        uint amount = address(this).balance;
+        winner.transfer(amount);
+        players = new address payable[](0);
+        emit Winner(winner, amount);
+    }
 
-        montantTotal -= montant;
-        //ça marche pas
-        owner.transfer(montant);
+    function getPlayers() public view returns (address payable[] memory) {
+        return players;
+    }
+
+    function random() private view returns (uint) {
+        return uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, players.length)));
+    }
+
+    modifier restricted() {
+        require(msg.sender == manager);
+        _;
     }
 }
