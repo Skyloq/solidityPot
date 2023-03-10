@@ -12,13 +12,13 @@ contract Lottery {
     address[] public players;
 
     address payable private winner;
-    State public state;
+    State private state;
 
-    uint public currentTime = block.timestamp;
+    uint private currentTime = block.timestamp;
 
     event LotteryEnter(address player, uint amount);
     event Winner(address winner, uint amount);
-    uint public totalAmount = 0;
+    uint private totalAmount = 0;
 
     constructor() {
         manager = msg.sender;
@@ -68,12 +68,25 @@ contract Lottery {
         emit Winner(winner, amount);
     }
 
-    function getPlayers() public view returns (address[] memory) {
-        return players;
-    }
 
     function getTotalAmount() public view returns (uint){
         return totalAmount;
+    }
+
+    function getState() public view returns (State) {
+        return state;
+    }
+
+    function getCurrentTime() public view returns (uint) {
+        return currentTime;
+    }
+
+    function getTotalAmount() public view returns (uint) {
+        return totalAmount;
+    }
+
+    function getPlayers() public view returns (address[] memory) {
+        return players;
     }
 
     function randMod(uint _modulus)private returns(uint)
