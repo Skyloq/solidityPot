@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 contract Lottery {
@@ -19,7 +18,7 @@ contract Lottery {
 
     event LotteryEnter(address player, uint amount);
     event Winner(address winner, uint amount);
-    uint totalAmount = 0;
+    uint public totalAmount = 0;
 
     constructor() {
         manager = msg.sender;
