@@ -5,6 +5,7 @@ contract Lottery {
 
     enum State { Active, Close }
 
+    uint randNonce = 0;
 
     address public manager;
 
@@ -47,7 +48,7 @@ contract Lottery {
     function pickWinner() public restricted {
         require(players.length > 0);
 
-        uint winAmountIndex = uint(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, totalAmount)));
+        uint winAmountIndex = randMod(totalAmount);
         uint amountIndex = 0;
 
         for(uint i = 0; i < players.length; i ++){
@@ -74,6 +75,12 @@ contract Lottery {
 
     function getTotalAmount() public view returns (uint){
         return totalAmount;
+    }
+
+    function randMod(uint _modulus)private returns(uint)
+    {
+        randNonce++;
+        return uint(keccak256(abi.encodePacked(block.timestamp,msg.sender,randNonce))) % _modulus;
     }
 
     modifier restricted() {
