@@ -43,6 +43,7 @@ contract Lottery {
             if (players[lotteryNumber][i] == msg.sender){
                 players_data[lotteryNumber][msg.sender].amount_bet += msg.value;
                 players_data[lotteryNumber][msg.sender].player_address = msg.sender;
+                credited = true;
             }
         }
 
