@@ -58,7 +58,7 @@ contract Lottery {
     }
 
     //Choose a winner by choosing a random ticket, consedering the value of each ticket
-    function pickWinner() public restricted {
+    function pickWinner() public restricted returns (address) {
         require (players[lotteryNumber].length > 0);
 
         uint winAmountIndex = randMod(totalAmount);
@@ -78,6 +78,7 @@ contract Lottery {
         lotteryNumber++;
         totalAmount = 0;
         emit Winner(winner, amount);
+        return winner;
     }
 
     //Return the total amount of the pot
@@ -112,6 +113,11 @@ contract Lottery {
     //Return current lottery players
     function getCurrentLotteryPlayers() public view returns (Player[] memory) {
         return getLotteryPlayers(lotteryNumber);
+    }
+
+    //Return the current lottery number
+    function getLotteryNumber() public view returns (uint) {
+        return lotteryNumber;
     }
 
     //Generate a random number with modulo
